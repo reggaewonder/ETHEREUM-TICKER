@@ -4,11 +4,8 @@ import { formatPrice, formatPercent, formatVolume } from '../utils/formatters'
 /**
  * PriceHeader - The hero component showing live ETH price
  * 
- * Design decisions:
- * - Large, prominent price display (it's the main event)
- * - Green/red flash on price change for visual feedback
- * - Secondary stats (24h change, volume, high/low) in a row below
- * - Monospace font for numbers to prevent layout shift
+ * Now using Coinbase data - works in USA!
+ * Shows ETH/USD instead of ETH/USDT
  */
 export function PriceHeader({ 
   price, 
@@ -17,7 +14,7 @@ export function PriceHeader({
   priceChangePercent, 
   high24h, 
   low24h, 
-  quoteVolume24h,
+  volume24h,
   status 
 }) {
   const priceRef = useRef(null)
@@ -58,7 +55,7 @@ export function PriceHeader({
             </div>
             <div>
               <h1 className="text-xl font-semibold text-white">Ethereum</h1>
-              <span className="text-ticker-muted text-sm">ETH/USDT</span>
+              <span className="text-ticker-muted text-sm">ETH/USD • Coinbase</span>
             </div>
           </div>
           
@@ -71,7 +68,7 @@ export function PriceHeader({
               ${price ? formatPrice(price) : '—'}
             </div>
             <div className={`price-display text-lg ${changeColor} mt-1`}>
-              {formatPercent(priceChangePercent)} ({priceChange >= 0 ? '+' : ''}${formatPrice(priceChange)})
+              {formatPercent(priceChangePercent)} ({priceChange >= 0 ? '+' : ''}${formatPrice(Math.abs(priceChange))})
             </div>
           </div>
         </div>
@@ -80,7 +77,7 @@ export function PriceHeader({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-ticker-border">
           <StatItem 
             label="24h Volume" 
-            value={formatVolume(quoteVolume24h)} 
+            value={volume24h ? `${formatVolume(volume24h * price)} (${formatQuantityShort(volume24h)} ETH)` : '—'} 
           />
           <StatItem 
             label="24h High" 
@@ -94,18 +91,8 @@ export function PriceHeader({
           />
           <StatItem 
             label="Status" 
-            value={
-              status === 'live' ? '● Real-time' : 
-              status === 'connected' ? '● Connected' : 
-              status === 'error' ? '● Error' :
-              '○ Connecting...'
-            }
-            valueClass={
-              status === 'live' ? 'text-ticker-green' :
-              status === 'connected' ? 'text-ticker-green' :
-              status === 'error' ? 'text-ticker-red' :
-              'text-yellow-500'
-            } 
+            value={status === 'connected' ? '● Live' : status === 'error' ? '● Error' : '○ Connecting...'}
+            valueClass={status === 'connected' ? 'text-ticker-green' : status === 'error' ? 'text-ticker-red' : 'text-yellow-500'} 
           />
         </div>
       </div>
@@ -124,4 +111,12 @@ function StatItem({ label, value, valueClass = 'text-white' }) {
       </div>
     </div>
   )
+}
+
+function formatQuantityShort(qty) {
+  if (!qty) return '—'
+  const num = parseFloat(qty)
+  if (num >= 1e6) return `${(num / 1e6).toFixed(1)}M`
+  if (num >= 1e3) return `${(num / 1e3).toFixed(1)}K`
+  return num.toFixed(0)
 }

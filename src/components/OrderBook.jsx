@@ -1,40 +1,17 @@
-import { useBinanceOrderBook } from '../hooks/useBinanceOrderBook'
+import { useCoinbaseOrderBook } from '../hooks/useCoinbaseOrderBook'
 import { formatPrice, formatQuantity } from '../utils/formatters'
 
 /**
- * OrderBook Component - Real-time bid/ask depth visualization
+ * OrderBook Component - Real-time bid/ask depth via Coinbase
  * 
- * Now with graceful handling when Binance is blocked:
- * - Shows "unavailable" message instead of breaking
- * - Still looks good even without data
+ * Now using Coinbase WebSocket - works in USA!
  */
 
 export function OrderBook() {
-  const { bids, asks, spread, status } = useBinanceOrderBook(10)
+  const { bids, asks, spread, status } = useCoinbaseOrderBook(10)
 
   // Reverse asks so lowest (best) ask appears at bottom
   const reversedAsks = [...asks].reverse()
-
-  // Show unavailable state
-  if (status === 'unavailable') {
-    return (
-      <div className="bg-ticker-card border border-ticker-border rounded-lg overflow-hidden h-full flex flex-col">
-        <div className="px-3 py-2 border-b border-ticker-border flex items-center justify-between">
-          <h3 className="text-sm font-medium text-ticker-text">Order Book</h3>
-          <span className="text-xs text-ticker-muted">○ Unavailable</span>
-        </div>
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="text-center text-ticker-muted">
-            <div className="text-3xl mb-2">📊</div>
-            <div className="text-sm">Order book unavailable</div>
-            <div className="text-xs mt-1 opacity-60">
-              Real-time data blocked in your region
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="bg-ticker-card border border-ticker-border rounded-lg overflow-hidden h-full flex flex-col">
