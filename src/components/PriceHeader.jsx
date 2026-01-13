@@ -94,8 +94,18 @@ export function PriceHeader({
           />
           <StatItem 
             label="Status" 
-            value={status === 'connected' ? '● Live' : '○ Connecting...'}
-            valueClass={status === 'connected' ? 'text-ticker-green' : 'text-yellow-500'} 
+            value={
+              status === 'live' ? '● Real-time' : 
+              status === 'connected' ? '● Connected' : 
+              status === 'error' ? '● Error' :
+              '○ Connecting...'
+            }
+            valueClass={
+              status === 'live' ? 'text-ticker-green' :
+              status === 'connected' ? 'text-ticker-green' :
+              status === 'error' ? 'text-ticker-red' :
+              'text-yellow-500'
+            } 
           />
         </div>
       </div>

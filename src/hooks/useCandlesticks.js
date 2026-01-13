@@ -1,23 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
 
 /**
- * Hook for fetching OHLCV candlestick data from Binance
+ * Hook for fetching OHLCV candlestick data
  * 
- * Why REST instead of WebSocket for historical data?
- * - WebSocket only gives us real-time updates
- * - We need historical candles to draw the chart initially
- * - REST is perfect for "give me the last N candles"
+ * Strategy:
+ * 1. Try Binance first (better data resolution)
+ * 2. Fall back to CoinGecko if Binance is blocked
  * 
- * Timeframe mapping:
- * - 1H = 60 candles of 1m each (last hour)
- * - 4H = 48 candles of 5m each  
- * - 1D = 96 candles of 15m each
- * - 1W = 168 candles of 1h each
- * - 1M = 30 candles of 1d each
+ * CoinGecko OHLC limitations:
+ * - Only supports 1/7/14/30/90/180/365 day ranges
+ * - Less granular than Binance
+ * - But works everywhere!
  */
 
-// Map our UI timeframes to Binance intervals
-const TIMEFRAME_CONFIG = {
+// Binance config (preferred)
+const BINANCE_CONFIG = {
   '1H': { interval: '1m', limit: 60 },
   '4H': { interval: '5m', limit: 48 },
   '1D': { interval: '15m', limit: 96 },
@@ -25,62 +22,87 @@ const TIMEFRAME_CONFIG = {
   '1M': { interval: '1d', limit: 30 },
 }
 
+// CoinGecko config (fallback)
+const COINGECKO_CONFIG = {
+  '1H': { days: '1' },      // 1 day gives ~24 candles
+  '4H': { days: '1' },
+  '1D': { days: '1' },
+  '1W': { days: '7' },
+  '1M': { days: '30' },
+}
+
 export function useCandlesticks(timeframe = '1D') {
   const [candles, setCandles] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const fetchCandles = useCallback(async () => {
-    const config = TIMEFRAME_CONFIG[timeframe]
-    if (!config) {
-      setError(`Invalid timeframe: ${timeframe}`)
-      return
-    }
+  const fetchFromBinance = useCallback(async () => {
+    const config = BINANCE_CONFIG[timeframe]
+    const url = `https://api.binance.com/api/v3/klines?symbol=ETHUSDT&interval=${config.interval}&limit=${config.limit}`
+    
+    const response = await fetch(url)
+    if (!response.ok) throw new Error('Binance fetch failed')
+    
+    const data = await response.json()
+    return data.map(candle => ({
+      time: Math.floor(candle[0] / 1000),
+      open: parseFloat(candle[1]),
+      high: parseFloat(candle[2]),
+      low: parseFloat(candle[3]),
+      close: parseFloat(candle[4]),
+      volume: parseFloat(candle[5]),
+    }))
+  }, [timeframe])
 
+  const fetchFromCoinGecko = useCallback(async () => {
+    const config = COINGECKO_CONFIG[timeframe]
+    const url = `https://api.coingecko.com/api/v3/coins/ethereum/ohlc?vs_currency=usd&days=${config.days}`
+    
+    const response = await fetch(url)
+    if (!response.ok) throw new Error('CoinGecko fetch failed')
+    
+    const data = await response.json()
+    
+    // CoinGecko returns [timestamp, open, high, low, close]
+    return data.map(candle => ({
+      time: Math.floor(candle[0] / 1000),
+      open: candle[1],
+      high: candle[2],
+      low: candle[3],
+      close: candle[4],
+      volume: 0, // CoinGecko OHLC doesn't include volume
+    }))
+  }, [timeframe])
+
+  const fetchCandles = useCallback(async () => {
     setLoading(true)
     setError(null)
 
     try {
-      const url = `https://api.binance.com/api/v3/klines?symbol=ETHUSDT&interval=${config.interval}&limit=${config.limit}`
-      const response = await fetch(url)
+      // Try Binance first
+      const data = await fetchFromBinance()
+      setCandles(data)
+    } catch (binanceError) {
+      console.log('Binance failed, trying CoinGecko:', binanceError.message)
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+      try {
+        // Fall back to CoinGecko
+        const data = await fetchFromCoinGecko()
+        setCandles(data)
+      } catch (geckoError) {
+        console.error('Both APIs failed:', geckoError)
+        setError('Unable to load chart data')
       }
-
-      const data = await response.json()
-
-      // Transform Binance data to chart format
-      // Binance returns: [openTime, open, high, low, close, volume, closeTime, ...]
-      const formatted = data.map(candle => ({
-        time: Math.floor(candle[0] / 1000), // Convert ms to seconds for lightweight-charts
-        open: parseFloat(candle[1]),
-        high: parseFloat(candle[2]),
-        low: parseFloat(candle[3]),
-        close: parseFloat(candle[4]),
-        volume: parseFloat(candle[5]),
-      }))
-
-      setCandles(formatted)
-    } catch (err) {
-      console.error('Failed to fetch candles:', err)
-      setError(err.message)
     } finally {
       setLoading(false)
     }
-  }, [timeframe])
+  }, [fetchFromBinance, fetchFromCoinGecko])
 
-  // Fetch on mount and when timeframe changes
   useEffect(() => {
     fetchCandles()
   }, [fetchCandles])
 
-  // Refetch function for manual refresh
-  const refetch = useCallback(() => {
-    fetchCandles()
-  }, [fetchCandles])
-
-  return { candles, loading, error, refetch }
+  return { candles, loading, error, refetch: fetchCandles }
 }
 
-export { TIMEFRAME_CONFIG }
+export { BINANCE_CONFIG, COINGECKO_CONFIG }
