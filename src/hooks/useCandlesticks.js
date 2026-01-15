@@ -8,11 +8,15 @@ import { useState, useEffect } from 'react'
  */
 
 const TIMEFRAME_CONFIG = {
-  '1H': { days: '1' },
-  '4H': { days: '1' },
-  '1D': { days: '1' },
-  '1W': { days: '7' },
-  '1M': { days: '30' },
+  '24H': { days: '1' },
+  '7D': { days: '7' },
+  '30D': { days: '30' },
+  '6M': { days: '180' },
+  '1Y': { days: '365' },
+  '2Y': { days: '730' },
+  '3Y': { days: '1095' },
+  '5Y': { days: '1825' },
+  '10Y': { days: 'max' },  // CoinGecko 'max' gives all available history
 }
 
 export function useCandlesticks(timeframe = '1D') {

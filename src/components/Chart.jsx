@@ -41,7 +41,7 @@ export function Chart({ currentPrice }) {
   const candleSeriesRef = useRef(null)
   const volumeSeriesRef = useRef(null)
   
-  const [timeframe, setTimeframe] = useState('1D')
+  const [timeframe, setTimeframe] = useState('30D')
   const [chartType, setChartType] = useState('candle') // 'candle' or 'line'
   const [crosshairData, setCrosshairData] = useState(null)
   

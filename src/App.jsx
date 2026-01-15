@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useCoinbasePrice } from './hooks/useCoinbasePrice'
 import { PriceHeader } from './components/PriceHeader'
 import { Chart } from './components/Chart'
@@ -18,6 +19,20 @@ import { NewsFeed } from './components/NewsFeed'
 function App() {
   // Real-time price data from Coinbase WebSocket
   const priceData = useCoinbasePrice()
+
+  // Update browser tab title with live price
+  useEffect(() => {
+    if (priceData.price) {
+      const formattedPrice = priceData.price.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+      const arrow = priceData.priceChangePercent >= 0 ? '▲' : '▼'
+      document.title = `$${formattedPrice} ${arrow} ETH | EthTicker`
+    } else {
+      document.title = 'EthTicker - Live ETH Price'
+    }
+  }, [priceData.price, priceData.priceChangePercent])
   
   return (
     <div className="min-h-screen bg-ticker-bg">
